@@ -1,21 +1,14 @@
 const { Sequelize } = require('sequelize');
 
-// Используем переменную окружения для подключения
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
   dialectOptions: {
     ssl: {
       require: true,
-      rejectUnauthorized: false
+      rejectUnauthorized: false  // Эта опция игнорирует самоподписанный сертификат
     }
   },
-  logging: false,
-  pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
-  }
+  logging: false
 });
 
 module.exports = sequelize;

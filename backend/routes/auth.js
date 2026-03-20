@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { User } = require('../models');
+const auth = require('../middleware/auth');
 
 // @route   POST api/auth/telegram
 // @desc    Authenticate user with Telegram data
@@ -11,18 +12,17 @@ router.post('/telegram', async (req, res) => {
     const { id, first_name, last_name, username, photo_url } = req.body;
 
     // Check if user exists
-    let user = await User.findOne({ telegramId: id.toString() });
+    let user = await User.findOne({ where: { telegramId: id.toString() } });
 
     if (!user) {
       // Create new user
-      user = new User({
+      user = await User.create({
         telegramId: id.toString(),
         username: username || `user_${id}`,
         firstName: first_name,
         lastName: last_name,
         photoUrl: photo_url
       });
-      await user.save();
     }
 
     // Create JWT payload
@@ -52,9 +52,11 @@ router.post('/telegram', async (req, res) => {
 // @route   GET api/auth/verify
 // @desc    Verify token and get user
 // @access  Private
-router.get('/verify', require('../middleware/auth'), async (req, res) => {
+router.get('/verify', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findByPk(req.user.id, {
+      attributes: { exclude: ['password'] }
+    });
     res.json(user);
   } catch (err) {
     console.error(err.message);

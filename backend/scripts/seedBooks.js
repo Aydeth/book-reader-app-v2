@@ -1,24 +1,24 @@
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
+const sequelize = require('../config/database');
 const Book = require('../models/Book');
 const booksData = require('../data/books.json');
 
-dotenv.config();
-
-mongoose.connect(process.env.MONGODB_URI)
-  .then(async () => {
-    console.log('MongoDB connected');
+const seedBooks = async () => {
+  try {
+    await sequelize.authenticate();
+    await sequelize.sync();
     
     // Clear existing books
-    await Book.deleteMany({});
+    await Book.destroy({ where: {}, truncate: true });
     
     // Insert new books
-    await Book.insertMany(booksData);
+    await Book.bulkCreate(booksData);
     
     console.log('Books seeded successfully');
     process.exit(0);
-  })
-  .catch(err => {
+  } catch (err) {
     console.error('Error seeding books:', err);
     process.exit(1);
-  });
+  }
+};
+
+seedBooks();

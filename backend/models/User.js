@@ -1,32 +1,44 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const userSchema = new mongoose.Schema({
+const User = sequelize.define('User', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
   telegramId: {
-    type: String,
-    required: true,
+    type: DataTypes.STRING,
+    allowNull: false,
     unique: true
   },
   username: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
-  firstName: String,
-  lastName: String,
-  photoUrl: String,
+  firstName: DataTypes.STRING,
+  lastName: DataTypes.STRING,
+  photoUrl: DataTypes.STRING,
   bio: {
-    type: String,
-    default: ''
+    type: DataTypes.TEXT,
+    defaultValue: ''
   },
-  favoriteGenres: [String],
+  favoriteGenres: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    defaultValue: []
+  },
   readingStats: {
-    booksRead: { type: Number, default: 0 },
-    pagesRead: { type: Number, default: 0 },
-    readingTime: { type: Number, default: 0 } // в минутах
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
+    type: DataTypes.JSONB,
+    defaultValue: {
+      booksRead: 0,
+      pagesRead: 0,
+      readingTime: 0
+    }
   }
+}, {
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 });
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = User;

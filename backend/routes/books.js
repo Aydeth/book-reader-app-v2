@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const Book = require('../models/Book');
-const ReadingProgress = require('../models/ReadingProgress');
+const { Book, ReadingProgress, Comment } = require('../models');
 const auth = require('../middleware/auth');
+const { Op } = require('sequelize');
 
 // @route   GET api/books
 // @desc    Get all books with pagination
@@ -11,20 +11,19 @@ router.get('/', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
-    const books = await Book.find()
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Book.countDocuments();
+    const { count, rows: books } = await Book.findAndCountAll({
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']]
+    });
 
     res.json({
       books,
       currentPage: page,
-      totalPages: Math.ceil(total / limit),
-      totalBooks: total
+      totalPages: Math.ceil(count / limit),
+      totalBooks: count
     });
   } catch (err) {
     console.error(err.message);
@@ -38,20 +37,24 @@ router.get('/', async (req, res) => {
 router.get('/search', async (req, res) => {
   try {
     const { query, genre } = req.query;
-    let filter = {};
+    let whereClause = {};
 
     if (query) {
-      filter.$or = [
-        { title: { $regex: query, $options: 'i' } },
-        { author: { $regex: query, $options: 'i' } }
+      whereClause[Op.or] = [
+        { title: { [Op.iLike]: `%${query}%` } },
+        { author: { [Op.iLike]: `%${query}%` } }
       ];
     }
 
     if (genre) {
-      filter.genres = genre;
+      whereClause.genres = { [Op.contains]: [genre] };
     }
 
-    const books = await Book.find(filter).limit(20);
+    const books = await Book.findAll({
+      where: whereClause,
+      limit: 20
+    });
+
     res.json(books);
   } catch (err) {
     console.error(err.message);
@@ -64,16 +67,13 @@ router.get('/search', async (req, res) => {
 // @access  Public
 router.get('/:id', async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findByPk(req.params.id);
     if (!book) {
       return res.status(404).json({ msg: 'Book not found' });
     }
     res.json(book);
   } catch (err) {
     console.error(err.message);
-    if (err.kind === 'ObjectId') {
-      return res.status(404).json({ msg: 'Book not found' });
-    }
     res.status(500).send('Server error');
   }
 });
@@ -83,28 +83,31 @@ router.get('/:id', async (req, res) => {
 // @access  Private
 router.get('/:id/content', auth, async (req, res) => {
   try {
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findByPk(req.params.id);
     if (!book) {
       return res.status(404).json({ msg: 'Book not found' });
     }
 
     // Update reading progress
     let progress = await ReadingProgress.findOne({
-      userId: req.user.id,
-      bookId: req.params.id
+      where: {
+        userId: req.user.id,
+        bookId: req.params.id
+      }
     });
 
     if (!progress) {
-      progress = new ReadingProgress({
+      progress = await ReadingProgress.create({
         userId: req.user.id,
         bookId: req.params.id,
-        totalPages: book.pages
+        totalPages: book.pages,
+        status: 'reading'
       });
+    } else {
+      progress.lastReadAt = new Date();
+      progress.status = 'reading';
+      await progress.save();
     }
-
-    progress.lastReadAt = new Date();
-    progress.status = 'reading';
-    await progress.save();
 
     res.json({ content: book.fileUrl, format: book.fileFormat });
   } catch (err) {
@@ -119,7 +122,7 @@ router.get('/:id/content', auth, async (req, res) => {
 router.post('/:id/rate', auth, async (req, res) => {
   try {
     const { rating } = req.body;
-    const book = await Book.findById(req.params.id);
+    const book = await Book.findByPk(req.params.id);
 
     if (!book) {
       return res.status(404).json({ msg: 'Book not found' });

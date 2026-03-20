@@ -1,56 +1,52 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const User = require('./User');
+const Book = require('./Book');
 
-const readingProgressSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  bookId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Book',
-    required: true
+const ReadingProgress = sequelize.define('ReadingProgress', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
   currentPage: {
-    type: Number,
-    default: 0
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   },
-  totalPages: Number,
+  totalPages: DataTypes.INTEGER,
   status: {
-    type: String,
-    enum: ['want_to_read', 'reading', 'completed', 'dropped'],
-    default: 'want_to_read'
+    type: DataTypes.ENUM('want_to_read', 'reading', 'completed', 'dropped'),
+    defaultValue: 'want_to_read'
   },
   progress: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    validate: {
+      min: 0,
+      max: 100
+    }
   },
-  lastReadAt: Date,
-  notes: [{
-    page: Number,
-    text: String,
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  bookmarks: [{
-    page: Number,
-    note: String,
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  createdAt: {
-    type: Date,
-    default: Date.now
+  lastReadAt: DataTypes.DATE,
+  notes: {
+    type: DataTypes.JSONB,
+    defaultValue: []
+  },
+  bookmarks: {
+    type: DataTypes.JSONB,
+    defaultValue: []
   }
+}, {
+  timestamps: true
 });
 
-// Составной уникальный индекс для пары пользователь-книга
-readingProgressSchema.index({ userId: 1, bookId: 1 }, { unique: true });
+// Relationships
+ReadingProgress.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+ReadingProgress.belongsTo(Book, { as: 'book', foreignKey: 'bookId' });
 
-module.exports = mongoose.model('ReadingProgress', readingProgressSchema);
+// Composite unique index
+ReadingProgress.addIndex({
+  fields: ['userId', 'bookId'],
+  unique: true
+});
+
+module.exports = ReadingProgress;

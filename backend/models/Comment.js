@@ -1,33 +1,35 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+const User = require('./User');
+const Book = require('./Book');
 
-const commentSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  bookId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Book',
-    required: true
+const Comment = sequelize.define('Comment', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
   text: {
-    type: String,
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false
   },
   rating: {
-    type: Number,
-    min: 1,
-    max: 5
+    type: DataTypes.INTEGER,
+    validate: {
+      min: 1,
+      max: 5
+    }
   },
-  likes: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  createdAt: {
-    type: Date,
-    default: Date.now
+  likes: {
+    type: DataTypes.ARRAY(DataTypes.UUID),
+    defaultValue: []
   }
+}, {
+  timestamps: true
 });
 
-module.exports = mongoose.model('Comment', commentSchema);
+// Relationships
+Comment.belongsTo(User, { as: 'user', foreignKey: 'userId' });
+Comment.belongsTo(Book, { as: 'book', foreignKey: 'bookId' });
+
+module.exports = Comment;

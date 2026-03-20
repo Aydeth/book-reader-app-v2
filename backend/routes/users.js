@@ -1,30 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
-const ReadingProgress = require('../models/ReadingProgress');
+const { User, ReadingProgress, Book } = require('../models');
 const auth = require('../middleware/auth');
+const { Op } = require('sequelize');
 
 // @route   GET api/users/profile
 // @desc    Get current user profile
 // @access  Private
 router.get('/profile', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findByPk(req.user.id);
     
     // Get reading stats
-    const stats = await ReadingProgress.aggregate([
-      { $match: { userId: req.user.id } },
-      { $group: {
-        _id: null,
-        booksRead: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
-        booksReading: { $sum: { $cond: [{ $eq: ['$status', 'reading'] }, 1, 0] } },
-        booksWantToRead: { $sum: { $cond: [{ $eq: ['$status', 'want_to_read'] }, 1, 0] } }
-      }}
-    ]);
+    const stats = await ReadingProgress.findAll({
+      where: { userId: req.user.id },
+      attributes: ['status']
+    });
+
+    const statsSummary = {
+      booksRead: stats.filter(s => s.status === 'completed').length,
+      booksReading: stats.filter(s => s.status === 'reading').length,
+      booksWantToRead: stats.filter(s => s.status === 'want_to_read').length
+    };
 
     res.json({
-      ...user.toObject(),
-      stats: stats[0] || { booksRead: 0, booksReading: 0, booksWantToRead: 0 }
+      ...user.toJSON(),
+      stats: statsSummary
     });
   } catch (err) {
     console.error(err.message);
@@ -39,11 +40,10 @@ router.put('/profile', auth, async (req, res) => {
   try {
     const { bio, favoriteGenres } = req.body;
     
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { $set: { bio, favoriteGenres } },
-      { new: true }
-    ).select('-password');
+    const user = await User.findByPk(req.user.id);
+    user.bio = bio || user.bio;
+    user.favoriteGenres = favoriteGenres || user.favoriteGenres;
+    await user.save();
 
     res.json(user);
   } catch (err) {
@@ -57,16 +57,15 @@ router.put('/profile', auth, async (req, res) => {
 // @access  Public
 router.get('/:id', async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findByPk(req.params.id, {
+      attributes: { exclude: ['password'] }
+    });
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
     }
     res.json(user);
   } catch (err) {
     console.error(err.message);
-    if (err.kind === 'ObjectId') {
-      return res.status(404).json({ msg: 'User not found' });
-    }
     res.status(500).send('Server error');
   }
 });
@@ -76,9 +75,14 @@ router.get('/:id', async (req, res) => {
 // @access  Public
 router.get('/:id/books', async (req, res) => {
   try {
-    const progress = await ReadingProgress.find({ userId: req.params.id })
-      .populate('bookId')
-      .sort({ lastReadAt: -1 });
+    const progress = await ReadingProgress.findAll({
+      where: { userId: req.params.id },
+      include: [{
+        model: Book,
+        as: 'book'
+      }],
+      order: [['lastReadAt', 'DESC']]
+    });
 
     res.json(progress);
   } catch (err) {

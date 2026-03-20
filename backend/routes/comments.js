@@ -1,16 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const Comment = require('../models/Comment');
+const { Comment, User, Book } = require('../models');
 const auth = require('../middleware/auth');
+const { Op } = require('sequelize');
 
 // @route   GET api/comments/book/:bookId
 // @desc    Get comments for a book
 // @access  Public
 router.get('/book/:bookId', async (req, res) => {
   try {
-    const comments = await Comment.find({ bookId: req.params.bookId })
-      .populate('userId', 'username firstName lastName photoUrl')
-      .sort({ createdAt: -1 });
+    const comments = await Comment.findAll({
+      where: { bookId: req.params.bookId },
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'username', 'firstName', 'lastName', 'photoUrl']
+      }],
+      order: [['createdAt', 'DESC']]
+    });
 
     res.json(comments);
   } catch (err) {
@@ -26,17 +33,22 @@ router.post('/', auth, async (req, res) => {
   try {
     const { bookId, text, rating } = req.body;
 
-    const comment = new Comment({
+    const comment = await Comment.create({
       userId: req.user.id,
       bookId,
       text,
       rating
     });
 
-    await comment.save();
-    await comment.populate('userId', 'username firstName lastName photoUrl');
+    const commentWithUser = await Comment.findByPk(comment.id, {
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'username', 'firstName', 'lastName', 'photoUrl']
+      }]
+    });
 
-    res.json(comment);
+    res.json(commentWithUser);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -48,14 +60,14 @@ router.post('/', auth, async (req, res) => {
 // @access  Private
 router.put('/:id', auth, async (req, res) => {
   try {
-    const comment = await Comment.findById(req.params.id);
+    const comment = await Comment.findByPk(req.params.id);
 
     if (!comment) {
       return res.status(404).json({ msg: 'Comment not found' });
     }
 
     // Check user owns comment
-    if (comment.userId.toString() !== req.user.id) {
+    if (comment.userId !== req.user.id) {
       return res.status(401).json({ msg: 'User not authorized' });
     }
 
@@ -65,9 +77,16 @@ router.put('/:id', auth, async (req, res) => {
     }
 
     await comment.save();
-    await comment.populate('userId', 'username firstName lastName photoUrl');
 
-    res.json(comment);
+    const updatedComment = await Comment.findByPk(comment.id, {
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'username', 'firstName', 'lastName', 'photoUrl']
+      }]
+    });
+
+    res.json(updatedComment);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');
@@ -79,18 +98,18 @@ router.put('/:id', auth, async (req, res) => {
 // @access  Private
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const comment = await Comment.findById(req.params.id);
+    const comment = await Comment.findByPk(req.params.id);
 
     if (!comment) {
       return res.status(404).json({ msg: 'Comment not found' });
     }
 
     // Check user owns comment
-    if (comment.userId.toString() !== req.user.id) {
+    if (comment.userId !== req.user.id) {
       return res.status(401).json({ msg: 'User not authorized' });
     }
 
-    await comment.deleteOne();
+    await comment.destroy();
     res.json({ msg: 'Comment removed' });
   } catch (err) {
     console.error(err.message);
@@ -103,25 +122,35 @@ router.delete('/:id', auth, async (req, res) => {
 // @access  Private
 router.post('/:id/like', auth, async (req, res) => {
   try {
-    const comment = await Comment.findById(req.params.id);
+    const comment = await Comment.findByPk(req.params.id);
 
     if (!comment) {
       return res.status(404).json({ msg: 'Comment not found' });
     }
 
-    // Check if already liked
-    const likedIndex = comment.likes.indexOf(req.user.id);
+    const likes = comment.likes || [];
+    const likedIndex = likes.indexOf(req.user.id);
 
     if (likedIndex === -1) {
       // Like comment
-      comment.likes.push(req.user.id);
+      likes.push(req.user.id);
     } else {
       // Unlike comment
-      comment.likes.splice(likedIndex, 1);
+      likes.splice(likedIndex, 1);
     }
 
+    comment.likes = likes;
     await comment.save();
-    res.json(comment);
+
+    const updatedComment = await Comment.findByPk(comment.id, {
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'username', 'firstName', 'lastName', 'photoUrl']
+      }]
+    });
+
+    res.json(updatedComment);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

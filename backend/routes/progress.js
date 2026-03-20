@@ -1,16 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const ReadingProgress = require('../models/ReadingProgress');
+const { ReadingProgress, Book, User } = require('../models');
 const auth = require('../middleware/auth');
+const { Op } = require('sequelize');
 
 // @route   GET api/progress
 // @desc    Get user's reading progress for all books
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
-    const progress = await ReadingProgress.find({ userId: req.user.id })
-      .populate('bookId')
-      .sort({ lastReadAt: -1 });
+    const progress = await ReadingProgress.findAll({
+      where: { userId: req.user.id },
+      include: [{
+        model: Book,
+        as: 'book'
+      }],
+      order: [['lastReadAt', 'DESC']]
+    });
 
     res.json(progress);
   } catch (err) {
@@ -25,15 +31,24 @@ router.get('/', auth, async (req, res) => {
 router.get('/:bookId', auth, async (req, res) => {
   try {
     let progress = await ReadingProgress.findOne({
-      userId: req.user.id,
-      bookId: req.params.bookId
+      where: {
+        userId: req.user.id,
+        bookId: req.params.bookId
+      }
     });
 
     if (!progress) {
-      progress = new ReadingProgress({
+      const book = await Book.findByPk(req.params.bookId);
+      progress = {
         userId: req.user.id,
-        bookId: req.params.bookId
-      });
+        bookId: req.params.bookId,
+        currentPage: 0,
+        totalPages: book ? book.pages : 0,
+        status: 'want_to_read',
+        progress: 0,
+        notes: [],
+        bookmarks: []
+      };
     }
 
     res.json(progress);
@@ -51,20 +66,26 @@ router.post('/:bookId', auth, async (req, res) => {
     const { currentPage, status, progress: progressValue } = req.body;
 
     let readingProgress = await ReadingProgress.findOne({
-      userId: req.user.id,
-      bookId: req.params.bookId
+      where: {
+        userId: req.user.id,
+        bookId: req.params.bookId
+      }
     });
 
     if (!readingProgress) {
-      readingProgress = new ReadingProgress({
+      const book = await Book.findByPk(req.params.bookId);
+      readingProgress = await ReadingProgress.create({
         userId: req.user.id,
-        bookId: req.params.bookId
+        bookId: req.params.bookId,
+        totalPages: book ? book.pages : 0
       });
     }
 
     if (currentPage !== undefined) {
       readingProgress.currentPage = currentPage;
-      readingProgress.progress = Math.round((currentPage / readingProgress.totalPages) * 100);
+      if (readingProgress.totalPages) {
+        readingProgress.progress = Math.round((currentPage / readingProgress.totalPages) * 100);
+      }
     }
 
     if (status) {
@@ -72,10 +93,14 @@ router.post('/:bookId', auth, async (req, res) => {
       
       // If completed, update user stats
       if (status === 'completed') {
-        const User = require('../models/User');
-        await User.findByIdAndUpdate(req.user.id, {
-          $inc: { 'readingStats.booksRead': 1 }
-        });
+        const user = await User.findByPk(req.user.id);
+        const stats = user.readingStats || { booksRead: 0, pagesRead: 0, readingTime: 0 };
+        stats.booksRead = (stats.booksRead || 0) + 1;
+        if (readingProgress.totalPages) {
+          stats.pagesRead = (stats.pagesRead || 0) + readingProgress.totalPages;
+        }
+        user.readingStats = stats;
+        await user.save();
       }
     }
 
@@ -101,15 +126,19 @@ router.post('/:bookId/bookmark', auth, async (req, res) => {
     const { page, note } = req.body;
 
     const progress = await ReadingProgress.findOne({
-      userId: req.user.id,
-      bookId: req.params.bookId
+      where: {
+        userId: req.user.id,
+        bookId: req.params.bookId
+      }
     });
 
     if (!progress) {
       return res.status(404).json({ msg: 'Reading progress not found' });
     }
 
-    progress.bookmarks.push({ page, note });
+    const bookmarks = progress.bookmarks || [];
+    bookmarks.push({ page, note, createdAt: new Date() });
+    progress.bookmarks = bookmarks;
     await progress.save();
 
     res.json(progress);
@@ -125,19 +154,27 @@ router.post('/:bookId/bookmark', auth, async (req, res) => {
 router.delete('/:bookId/bookmark/:bookmarkId', auth, async (req, res) => {
   try {
     const progress = await ReadingProgress.findOne({
-      userId: req.user.id,
-      bookId: req.params.bookId
+      where: {
+        userId: req.user.id,
+        bookId: req.params.bookId
+      }
     });
 
     if (!progress) {
       return res.status(404).json({ msg: 'Reading progress not found' });
     }
 
-    progress.bookmarks = progress.bookmarks.filter(
-      bookmark => bookmark._id.toString() !== req.params.bookmarkId
+    const bookmarks = progress.bookmarks || [];
+    const bookmarkIndex = bookmarks.findIndex(
+      bm => bm._id && bm._id.toString() === req.params.bookmarkId
     );
-    
-    await progress.save();
+
+    if (bookmarkIndex !== -1) {
+      bookmarks.splice(bookmarkIndex, 1);
+      progress.bookmarks = bookmarks;
+      await progress.save();
+    }
+
     res.json(progress);
   } catch (err) {
     console.error(err.message);
@@ -153,15 +190,19 @@ router.post('/:bookId/note', auth, async (req, res) => {
     const { page, text } = req.body;
 
     const progress = await ReadingProgress.findOne({
-      userId: req.user.id,
-      bookId: req.params.bookId
+      where: {
+        userId: req.user.id,
+        bookId: req.params.bookId
+      }
     });
 
     if (!progress) {
       return res.status(404).json({ msg: 'Reading progress not found' });
     }
 
-    progress.notes.push({ page, text });
+    const notes = progress.notes || [];
+    notes.push({ page, text, createdAt: new Date() });
+    progress.notes = notes;
     await progress.save();
 
     res.json(progress);

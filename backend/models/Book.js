@@ -1,40 +1,44 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
-const bookSchema = new mongoose.Schema({
+const Book = sequelize.define('Book', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
   title: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   author: {
-    type: String,
-    required: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
-  description: String,
-  coverUrl: String,
-  fileUrl: String,
+  description: DataTypes.TEXT,
+  coverUrl: DataTypes.STRING,
+  fileUrl: DataTypes.STRING,
   fileFormat: {
-    type: String,
-    enum: ['epub', 'html', 'txt', 'pdf'],
-    default: 'html'
+    type: DataTypes.ENUM('epub', 'html', 'txt', 'pdf'),
+    defaultValue: 'html'
   },
-  genres: [String],
+  genres: {
+    type: DataTypes.ARRAY(DataTypes.STRING),
+    defaultValue: []
+  },
   rating: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 5
+    type: DataTypes.FLOAT,
+    defaultValue: 0
   },
   ratingCount: {
-    type: Number,
-    default: 0
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   },
-  publishedYear: Number,
-  publisher: String,
-  pages: Number,
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  publishedYear: DataTypes.INTEGER,
+  publisher: DataTypes.STRING,
+  pages: DataTypes.INTEGER
+}, {
+  timestamps: true
 });
 
-module.exports = mongoose.model('Book', bookSchema);
+module.exports = Book;

@@ -36,17 +36,18 @@ const ReadingProgress = sequelize.define('ReadingProgress', {
     defaultValue: []
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  // Добавляем уникальный составной индекс здесь
+  indexes: [
+    {
+      unique: true,
+      fields: ['userId', 'bookId']
+    }
+  ]
 });
 
 // Relationships
 ReadingProgress.belongsTo(User, { as: 'user', foreignKey: 'userId' });
 ReadingProgress.belongsTo(Book, { as: 'book', foreignKey: 'bookId' });
-
-// Composite unique index
-ReadingProgress.addIndex({
-  fields: ['userId', 'bookId'],
-  unique: true
-});
 
 module.exports = ReadingProgress;

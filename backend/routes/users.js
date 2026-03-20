@@ -79,7 +79,7 @@ router.get('/:id/books', async (req, res) => {
       where: { userId: req.params.id },
       include: [{
         model: Book,
-        as: 'book'
+        as: 'bookDetails' // изменено с 'book' на 'bookDetails'
       }],
       order: [['lastReadAt', 'DESC']]
     });

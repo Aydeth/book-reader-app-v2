@@ -1,7 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./User');
-const Book = require('./Book');
 
 const ReadingProgress = sequelize.define('ReadingProgress', {
   id: {
@@ -37,7 +35,6 @@ const ReadingProgress = sequelize.define('ReadingProgress', {
   }
 }, {
   timestamps: true,
-  // Добавляем уникальный составной индекс здесь
   indexes: [
     {
       unique: true,
@@ -45,9 +42,5 @@ const ReadingProgress = sequelize.define('ReadingProgress', {
     }
   ]
 });
-
-// Relationships
-ReadingProgress.belongsTo(User, { as: 'user', foreignKey: 'userId' });
-ReadingProgress.belongsTo(Book, { as: 'book', foreignKey: 'bookId' });
 
 module.exports = ReadingProgress;

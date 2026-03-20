@@ -1,7 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./User');
-const Book = require('./Book');
 
 const Comment = sequelize.define('Comment', {
   id: {
@@ -27,9 +25,5 @@ const Comment = sequelize.define('Comment', {
 }, {
   timestamps: true
 });
-
-// Relationships
-Comment.belongsTo(User, { as: 'user', foreignKey: 'userId' });
-Comment.belongsTo(Book, { as: 'book', foreignKey: 'bookId' });
 
 module.exports = Comment;

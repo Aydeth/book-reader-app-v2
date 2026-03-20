@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { Comment, User, Book } = require('../models');
 const auth = require('../middleware/auth');
-const { Op } = require('sequelize');
 
 // @route   GET api/comments/book/:bookId
 // @desc    Get comments for a book
@@ -13,7 +12,7 @@ router.get('/book/:bookId', async (req, res) => {
       where: { bookId: req.params.bookId },
       include: [{
         model: User,
-        as: 'user',
+        as: 'author', // изменено с 'user' на 'author'
         attributes: ['id', 'username', 'firstName', 'lastName', 'photoUrl']
       }],
       order: [['createdAt', 'DESC']]
@@ -43,7 +42,7 @@ router.post('/', auth, async (req, res) => {
     const commentWithUser = await Comment.findByPk(comment.id, {
       include: [{
         model: User,
-        as: 'user',
+        as: 'author', // изменено с 'user' на 'author'
         attributes: ['id', 'username', 'firstName', 'lastName', 'photoUrl']
       }]
     });
@@ -81,7 +80,7 @@ router.put('/:id', auth, async (req, res) => {
     const updatedComment = await Comment.findByPk(comment.id, {
       include: [{
         model: User,
-        as: 'user',
+        as: 'author', // изменено с 'user' на 'author'
         attributes: ['id', 'username', 'firstName', 'lastName', 'photoUrl']
       }]
     });
@@ -132,10 +131,8 @@ router.post('/:id/like', auth, async (req, res) => {
     const likedIndex = likes.indexOf(req.user.id);
 
     if (likedIndex === -1) {
-      // Like comment
       likes.push(req.user.id);
     } else {
-      // Unlike comment
       likes.splice(likedIndex, 1);
     }
 
@@ -145,7 +142,7 @@ router.post('/:id/like', auth, async (req, res) => {
     const updatedComment = await Comment.findByPk(comment.id, {
       include: [{
         model: User,
-        as: 'user',
+        as: 'author', // изменено с 'user' на 'author'
         attributes: ['id', 'username', 'firstName', 'lastName', 'photoUrl']
       }]
     });

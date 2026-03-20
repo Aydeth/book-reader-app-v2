@@ -2,6 +2,7 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "homepage": ".",
   "dependencies": {
     "@telegram-apps/sdk": "^1.0.0",
     "axios": "^1.6.0",

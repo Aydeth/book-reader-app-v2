@@ -1,0 +1,44 @@
+[
+  {
+    "title": "Война и мир",
+    "author": "Лев Толстой",
+    "description": "Роман-эпопея, описывающий русское общество в эпоху войн против Наполеона в 1805-1812 годах.",
+    "coverUrl": "https://via.placeholder.com/300x400?text=War+and+Peace",
+    "fileUrl": "/books/war_and_peace.html",
+    "fileFormat": "html",
+    "genres": ["Роман", "Исторический", "Классика"],
+    "rating": 4.8,
+    "ratingCount": 1250,
+    "publishedYear": 1869,
+    "publisher": "Русский Вестник",
+    "pages": 1225
+  },
+  {
+    "title": "Преступление и наказание",
+    "author": "Фёдор Достоевский",
+    "description": "Социально-психологический и философский роман, в котором автор исследует внутренний мир человека, его мысли и чувства.",
+    "coverUrl": "https://via.placeholder.com/300x400?text=Crime+and+Punishment",
+    "fileUrl": "/books/crime_and_punishment.html",
+    "fileFormat": "html",
+    "genres": ["Роман", "Психологический", "Классика"],
+    "rating": 4.7,
+    "ratingCount": 980,
+    "publishedYear": 1866,
+    "publisher": "Русский Вестник",
+    "pages": 671
+  },
+  {
+    "title": "Мастер и Маргарита",
+    "author": "Михаил Булгаков",
+    "description": "Роман, в котором переплетаются две сюжетные линии: история визита сатаны в советскую Москву и любовная история Мастера и Маргариты.",
+    "coverUrl": "https://via.placeholder.com/300x400?text=Master+and+Margarita",
+    "fileUrl": "/books/master_and_margarita.html",
+    "fileFormat": "html",
+    "genres": ["Роман", "Фантастика", "Сатира"],
+    "rating": 4.9,
+    "ratingCount": 1500,
+    "publishedYear": 1967,
+    "publisher": "Москва",
+    "pages": 480
+  }
+]

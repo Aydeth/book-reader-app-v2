@@ -34,6 +34,7 @@ app.use('/api/books', require('./routes/books'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/comments', require('./routes/comments'));
 app.use('/api/progress', require('./routes/progress'));
+app.use('/api/seed', require('./routes/seed'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
